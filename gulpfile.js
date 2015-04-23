@@ -15,6 +15,8 @@ var connect = require('gulp-connect');
 var header = require('gulp-header');
 var pkg = require('./package.json');
 var order = require('gulp-order');
+var awspublish = require('gulp-awspublish');
+
 var banner = ['/**',
   ' * <%= pkg.name %> - <%= pkg.description %>',
   ' * @version v<%= pkg.version %>',
@@ -82,7 +84,8 @@ gulp.task('less', ['clean'], function() {
     .src([
       './src/main/less/screen.less',
       './src/main/less/print.less',
-      './src/main/less/reset.less'
+      './src/main/less/reset.less',
+      './src/main/less/customizations.less'
     ])
     .pipe(less())
     .on('error', log)
@@ -113,7 +116,7 @@ gulp.task('copy', ['less'], function() {
  * Watch for changes and recompile
  */
 gulp.task('watch', function() {
-  return watch(['./src/**/*.{js,less,handlebars}'], function() {
+  return watch(['./src/**/*.{js,less,handlebars,html}'], function() {
     gulp.start('default');
   });
 });
@@ -128,10 +131,23 @@ gulp.task('connect', function() {
   });
 });
 
+gulp.task('publish', function() {
+  // create a new publisher
+  var publisher = awspublish.create({ bucket: 'developers.dispatchbot.com', profile: 'dispatchbot-assets' });
+
+  // define custom headers
+  var headers = {
+    'Cache-Control': 'max-age=3600, no-transform, public'
+  };
+
+  return gulp.src('./dist/**/*')
+    .pipe(publisher.publish(headers))
+    .pipe(awspublish.reporter());
+})
+
 function log(error) {
   console.error(error.toString && error.toString());
 }
-
 
 gulp.task('default', ['dist', 'copy']);
 gulp.task('serve', ['connect', 'watch']);
